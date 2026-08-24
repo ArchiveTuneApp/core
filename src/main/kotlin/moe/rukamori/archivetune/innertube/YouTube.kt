@@ -1016,37 +1016,52 @@ object YouTube {
                 return@runCatching homeContinuation(continuation).getOrThrow()
             }
 
-            val response = innerTube.browse(WEB_REMIX, browseId = "FEmusic_home", params = params, setLogin = true).body<BrowseResponse>()
-            val continuation =
-                response.contents
-                    ?.singleColumnBrowseResultsRenderer
-                    ?.tabs
-                    ?.firstOrNull()
-                    ?.tabRenderer
-                    ?.content
-                    ?.sectionListRenderer
-                    ?.continuations
-                    ?.getContinuation()
-            val sectionListRender =
-                response.contents
-                    ?.singleColumnBrowseResultsRenderer
-                    ?.tabs
-                    ?.firstOrNull()
-                    ?.tabRenderer
-                    ?.content
-                    ?.sectionListRenderer
-            val sections =
-                sectionListRender
-                    ?.contents!!
-                    .mapNotNull { it.toHomeSection() }
-                    .toMutableList()
-            val chips =
-                sectionListRender.header
-                    ?.chipCloudRenderer
-                    ?.chips
-                    ?.mapNotNull { HomePage.Chip.fromChipCloudChipRenderer(it) }
-            HomePage(chips, sections, continuation)
+            val accountPage = homePage(params = params, useAccountContext = true)
+            if (accountPage.sections.isNotEmpty()) {
+                return@runCatching accountPage
+            }
+
+            homePage(params = params, useAccountContext = false)
         }
+
+    private suspend fun homePage(
+        params: String?,
+        useAccountContext: Boolean,
+    ): HomePage {
+        val response =
+            innerTube
+                .browse(
+                    client = WEB_REMIX,
+                    browseId = "FEmusic_home",
+                    params = params,
+                    setLogin = true,
+                    useAccountContext = useAccountContext,
+                ).body<BrowseResponse>()
+        return response.toHomePage()
+    }
+
+    private fun BrowseResponse.toHomePage(): HomePage {
+        val sectionListRenderer =
+            contents
+                ?.singleColumnBrowseResultsRenderer
+                ?.tabs
+                ?.firstOrNull()
+                ?.tabRenderer
+                ?.content
+                ?.sectionListRenderer
+                ?: error("YouTube Music Home response is missing its section list")
+        val continuation = sectionListRenderer.continuations?.getContinuation()
+        val sections =
+            sectionListRenderer.contents
+                .orEmpty()
+                .mapNotNull { it.toHomeSection() }
+        val chips =
+            sectionListRenderer.header
+                ?.chipCloudRenderer
+                ?.chips
+                ?.mapNotNull { HomePage.Chip.fromChipCloudChipRenderer(it) }
+        return HomePage(chips, sections, continuation)
+    }
 
     private suspend fun homeContinuation(continuation: String): Result<HomePage> =
         runCatching {

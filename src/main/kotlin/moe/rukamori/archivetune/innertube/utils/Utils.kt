@@ -124,7 +124,7 @@ fun parseCookieString(cookie: String): Map<String, String> =
 
 fun hasYouTubeLoginCookie(cookie: String?): Boolean = youtubeLoginCookieValue(cookie) != null
 
-fun hasYtDlpYouTubeLoginCookies(cookie: String?): Boolean {
+fun hasCompleteYouTubeLoginCookies(cookie: String?): Boolean {
     val cookieMap = cookie?.let(::parseCookieString).orEmpty()
     return !cookieMap["LOGIN_INFO"].isNullOrBlank() &&
         YOUTUBE_LOGIN_COOKIE_NAMES.any { cookieName -> !cookieMap[cookieName].isNullOrBlank() }

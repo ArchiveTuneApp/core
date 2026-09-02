@@ -28,8 +28,24 @@ data class MusicTwoRowItemRenderer(
     val navigationEndpoint: NavigationEndpoint,
     val thumbnailOverlay: MusicResponsiveListItemRenderer.Overlay?,
 ) {
+    val watchEndpoint: WatchEndpoint?
+        get() =
+            navigationEndpoint.anyWatchEndpoint
+                ?: thumbnailOverlay
+                    ?.musicItemThumbnailOverlayRenderer
+                    ?.content
+                    ?.musicPlayButtonRenderer
+                    ?.playNavigationEndpoint
+                    ?.anyWatchEndpoint
+    val isEpisode: Boolean
+        get() =
+            watchEndpoint?.isPodcastEpisodeEndpoint == true ||
+                navigationEndpoint.browseEndpoint?.isPodcastEpisodeEndpoint == true ||
+                title.runs?.any { it.navigationEndpoint?.browseEndpoint?.isPodcastEpisodeEndpoint == true } == true
+    val isPodcast: Boolean
+        get() = navigationEndpoint.browseEndpoint?.isPodcastShowEndpoint == true
     val isSong: Boolean
-        get() = navigationEndpoint.endpoint is WatchEndpoint
+        get() = !isEpisode && navigationEndpoint.endpoint is WatchEndpoint
     val isPlaylist: Boolean
         get() =
             navigationEndpoint.browseEndpoint

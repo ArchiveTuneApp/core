@@ -34,8 +34,32 @@ data class MusicResponsiveListItemRenderer(
     val overlay: Overlay?,
     val navigationEndpoint: NavigationEndpoint?,
 ) {
+    val resolvedWatchEndpoint: WatchEndpoint?
+        get() =
+            navigationEndpoint?.anyWatchEndpoint
+                ?: overlay
+                    ?.musicItemThumbnailOverlayRenderer
+                    ?.content
+                    ?.musicPlayButtonRenderer
+                    ?.playNavigationEndpoint
+                    ?.anyWatchEndpoint
+    val isEpisode: Boolean
+        get() =
+            resolvedWatchEndpoint?.isPodcastEpisodeEndpoint == true ||
+                navigationEndpoint?.browseEndpoint?.isPodcastEpisodeEndpoint == true ||
+                flexColumns.any { column ->
+                    column.musicResponsiveListItemFlexColumnRenderer.text
+                        ?.runs
+                        ?.any { it.navigationEndpoint?.browseEndpoint?.isPodcastEpisodeEndpoint == true } == true
+                }
+    val isPodcast: Boolean
+        get() = navigationEndpoint?.browseEndpoint?.isPodcastShowEndpoint == true
     val isSong: Boolean
-        get() = navigationEndpoint == null || navigationEndpoint.watchEndpoint != null || navigationEndpoint.watchPlaylistEndpoint != null
+        get() =
+            !isEpisode &&
+                (navigationEndpoint == null ||
+                    navigationEndpoint.watchEndpoint != null ||
+                    navigationEndpoint.watchPlaylistEndpoint != null)
     val isPlaylist: Boolean
         get() =
             navigationEndpoint

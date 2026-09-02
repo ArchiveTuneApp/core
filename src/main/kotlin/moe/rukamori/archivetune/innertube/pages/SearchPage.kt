@@ -11,8 +11,11 @@ import moe.rukamori.archivetune.innertube.models.Album
 import moe.rukamori.archivetune.innertube.models.AlbumItem
 import moe.rukamori.archivetune.innertube.models.Artist
 import moe.rukamori.archivetune.innertube.models.ArtistItem
+import moe.rukamori.archivetune.innertube.models.EpisodeItem
 import moe.rukamori.archivetune.innertube.models.MusicResponsiveListItemRenderer
 import moe.rukamori.archivetune.innertube.models.PlaylistItem
+import moe.rukamori.archivetune.innertube.models.PODCAST_SHOW_BROWSE_PREFIX
+import moe.rukamori.archivetune.innertube.models.PodcastItem
 import moe.rukamori.archivetune.innertube.models.Run
 import moe.rukamori.archivetune.innertube.models.SongItem
 import moe.rukamori.archivetune.innertube.models.WatchEndpoint
@@ -33,6 +36,41 @@ object SearchPage {
         val thumbnail = renderer.thumbnail?.musicThumbnailRenderer?.getBestThumbnail()
         val metadata = renderer.metadataGroups()
         return when {
+            renderer.isEpisode -> {
+                val endpoint = renderer.watchEndpoint() ?: return null
+                val itemThumbnail = thumbnail ?: return null
+                val durationText = metadata.durationText()
+                EpisodeItem(
+                    id = renderer.playlistItemData?.videoId ?: endpoint.videoId ?: return null,
+                    browseId = renderer.episodeBrowseId(),
+                    title = title,
+                    podcast = metadata.podcastArtist(),
+                    description = null,
+                    dateText = metadata.firstTextExcludingDuration(),
+                    durationText = durationText,
+                    duration = durationText?.parseTime(),
+                    thumbnail = itemThumbnail.normalizedUrl,
+                    endpoint = endpoint,
+                    thumbnailWidth = itemThumbnail.width,
+                    thumbnailHeight = itemThumbnail.height,
+                )
+            }
+
+            renderer.isPodcast -> {
+                val endpoint = renderer.navigationEndpoint?.browseEndpoint ?: return null
+                PodcastItem(
+                    browseId = endpoint.browseId,
+                    playlistId =
+                        renderer.watchEndpoint()?.playlistId
+                            ?: endpoint.browseId.removePrefix(PODCAST_SHOW_BROWSE_PREFIX).takeIf(String::isNotBlank),
+                    title = title,
+                    author = metadata.podcastArtist(),
+                    thumbnail = thumbnail?.normalizedUrl,
+                    thumbnailWidth = thumbnail?.width,
+                    thumbnailHeight = thumbnail?.height,
+                )
+            }
+
             renderer.isSong -> {
                 val endpoint = renderer.watchEndpoint()
                 val itemThumbnail = thumbnail ?: return null
@@ -183,13 +221,15 @@ private fun MusicResponsiveListItemRenderer.metadataGroups(clean: Boolean = true
 }
 
 private fun MusicResponsiveListItemRenderer.watchEndpoint(): WatchEndpoint? =
-    navigationEndpoint?.anyWatchEndpoint
-        ?: overlay
-            ?.musicItemThumbnailOverlayRenderer
-            ?.content
-            ?.musicPlayButtonRenderer
-            ?.playNavigationEndpoint
-            ?.anyWatchEndpoint
+    resolvedWatchEndpoint
+
+private fun MusicResponsiveListItemRenderer.episodeBrowseId(): String? =
+    flexColumns
+        .asSequence()
+        .flatMap { it.musicResponsiveListItemFlexColumnRenderer.text?.runs.orEmpty().asSequence() }
+        .mapNotNull { it.navigationEndpoint?.browseEndpoint }
+        .firstOrNull { it.isPodcastEpisodeEndpoint }
+        ?.browseId
 
 private fun List<List<Run>>.duration(): Int? {
     for (group in asReversed()) {
@@ -199,6 +239,31 @@ private fun List<List<Run>>.duration(): Int? {
     }
     return null
 }
+
+private fun List<List<Run>>.durationText(): String? {
+    for (group in asReversed()) {
+        for (run in group.asReversed()) {
+            if (run.text.parseTime() != null) return run.text
+        }
+    }
+    return null
+}
+
+private fun List<List<Run>>.podcastArtist(): Artist? =
+    asSequence()
+        .flatten()
+        .firstNotNullOfOrNull { run ->
+            run.navigationEndpoint
+                ?.browseEndpoint
+                ?.takeIf { it.isPodcastShowEndpoint || it.isArtistEndpoint || it.browseId.startsWith("UC") }
+                ?.let { Artist(name = run.text, id = it.browseId) }
+        }
+
+private fun List<List<Run>>.firstTextExcludingDuration(): String? =
+    asSequence()
+        .flatten()
+        .map { it.text.trim() }
+        .firstOrNull { it.isNotBlank() && it.parseTime() == null }
 
 private fun List<List<Run>>.year(): Int? {
     for (group in asReversed()) {

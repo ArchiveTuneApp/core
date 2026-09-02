@@ -41,6 +41,7 @@ import moe.rukamori.archivetune.innertube.models.MusicResponsiveListItemRenderer
 import moe.rukamori.archivetune.innertube.models.MusicShelfRenderer
 import moe.rukamori.archivetune.innertube.models.MusicTwoRowItemRenderer
 import moe.rukamori.archivetune.innertube.models.PlaylistItem
+import moe.rukamori.archivetune.innertube.models.PODCAST_SHOW_BROWSE_PREFIX
 import moe.rukamori.archivetune.innertube.models.SearchSuggestions
 import moe.rukamori.archivetune.innertube.models.SectionListRenderer
 import moe.rukamori.archivetune.innertube.models.SongItem
@@ -85,6 +86,7 @@ import moe.rukamori.archivetune.innertube.pages.NextPage
 import moe.rukamori.archivetune.innertube.pages.NextResult
 import moe.rukamori.archivetune.innertube.pages.PlaylistContinuationPage
 import moe.rukamori.archivetune.innertube.pages.PlaylistPage
+import moe.rukamori.archivetune.innertube.pages.PodcastPage
 import moe.rukamori.archivetune.innertube.pages.RelatedPage
 import moe.rukamori.archivetune.innertube.pages.SearchPage
 import moe.rukamori.archivetune.innertube.pages.SearchResult
@@ -1022,6 +1024,33 @@ object YouTube {
             }
 
             homePage(params = params, useAccountContext = false)
+        }
+
+    suspend fun podcast(browseId: String): Result<PodcastPage> =
+        runCatching {
+            val normalizedBrowseId =
+                browseId.takeIf { it.startsWith(PODCAST_SHOW_BROWSE_PREFIX) }
+                    ?: "$PODCAST_SHOW_BROWSE_PREFIX$browseId"
+            val response =
+                innerTube
+                    .browse(
+                        client = WEB_REMIX,
+                        browseId = normalizedBrowseId,
+                        setLogin = true,
+                    ).body<BrowseResponse>()
+            PodcastPage.fromResponse(response, normalizedBrowseId)
+        }
+
+    suspend fun podcastContinuation(continuation: String): Result<PodcastPage.Continuation> =
+        runCatching {
+            val response =
+                innerTube
+                    .browse(
+                        client = WEB_REMIX,
+                        continuation = continuation,
+                        setLogin = true,
+                    ).body<BrowseResponse>()
+            PodcastPage.continuationFromResponse(response)
         }
 
     private suspend fun homePage(

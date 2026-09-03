@@ -33,6 +33,7 @@ import moe.rukamori.archivetune.innertube.models.AlbumItem
 import moe.rukamori.archivetune.innertube.models.Artist
 import moe.rukamori.archivetune.innertube.models.ArtistItem
 import moe.rukamori.archivetune.innertube.models.BrowseEndpoint
+import moe.rukamori.archivetune.innertube.models.EpisodeItem
 import moe.rukamori.archivetune.innertube.models.GridRenderer
 import moe.rukamori.archivetune.innertube.models.MediaInfo
 import moe.rukamori.archivetune.innertube.models.MusicCarouselShelfRenderer
@@ -42,6 +43,7 @@ import moe.rukamori.archivetune.innertube.models.MusicShelfRenderer
 import moe.rukamori.archivetune.innertube.models.MusicTwoRowItemRenderer
 import moe.rukamori.archivetune.innertube.models.PlaylistItem
 import moe.rukamori.archivetune.innertube.models.PODCAST_SHOW_BROWSE_PREFIX
+import moe.rukamori.archivetune.innertube.models.PodcastItem
 import moe.rukamori.archivetune.innertube.models.SearchSuggestions
 import moe.rukamori.archivetune.innertube.models.SectionListRenderer
 import moe.rukamori.archivetune.innertube.models.SongItem
@@ -2362,6 +2364,8 @@ object YouTube {
                         is PlaylistItem -> {
                             playlists.add(item)
                         }
+
+                        is EpisodeItem, is PodcastItem -> Unit
 
                         null -> {}
                     }
